@@ -50,7 +50,13 @@ module MarathonDeploy
     end
 
     if ((300..999).include?(response.code.to_i))
-      $LOG.error("Deployment response body => " + JSON.pretty_generate(JSON.parse(response.body)))
+      rspjson = JSON.parse(response.body)
+      $LOG.error('Deployment error: ' + rspjson['message']) if rspjson.has_key?('message')
+      if (rspjson.has_key?('details') && rspjson['details'].respond_to?('inject'))
+        errmsg = rspjson['details'].inject {|str, detail| str += "#{detail['attribute']} -> #{detail['error']} " }
+        $LOG.error("Detailed errors: #{errmsg}")
+      end
+      $LOG.error("Deployment response body => " + JSON.pretty_generate(rspjson))
       raise Error::DeploymentError, "Deployment returned response code #{response.code}", caller
     end
     
